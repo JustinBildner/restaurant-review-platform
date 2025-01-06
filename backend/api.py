@@ -2,41 +2,12 @@ from fastapi import FastAPI, HTTPException
 from database import DatabaseManager
 from redis_manager import RedisManager
 from schemas import ReviewCreate, ReviewResponse, RestaurantResponse
-import joblist
 from typing import List
+from nlp_utils import predict_sentiment, preprocess_text
 
 app = FastAPI()
 db = DatabaseManager()
 redis_manager = RedisManager()
-
-# Load the trained model and vectorizer
-model = joblib.load('models/restaurant_review_model.pkl')
-vectorizer = joblib.load('models/count_vectorizer.pkl')
-
-def preprocess_text(text):
-    custom_stopwords = {'don', "don't", 'ain', 'aren', "aren't", 'couldn', "couldn't",
-                        'didn', "didn't", 'doesn', "doesn't", 'hadn', "hadn't", 'hasn', "hasn't",
-                        'haven', "haven't", 'isn', "isn't", 'ma', 'mightn', "mightn't", 'mustn', "mustn't",
-                        'needn', "needn't", 'shan', "shan't", 'no', 'nor', 'not', 'shouldn', "shouldn't",
-                        'wasn', "wasn't", 'weren', "weren't", 'won', "won't", 'wouldn', "wouldn't"}
-    ps = PorterStemmer()
-    stop_words = set(stopwords.words("english")) - custom_stopwords
-
-    review = re.sub('[^a-zA-Z]', ' ', text)
-    review = review.lower()
-    review = review.split()
-    review = [ps.stem(word) for word in review if word not in stop_words]
-    review = " ".join(review)
-
-    return review
-
-def predict_sentiment(user_input):
-    processed_input = preprocess_text(user_input)
-    # Transform the processed_input using the CountVectorizer
-    processed_input_vectorized = vectorizer.transform([processed_input])
-    # Predict sentiment
-    prediction = model.predict(processed_input_vectorized)[0]
-    return 1 if prediction == 1 else -0
 
 @app.post("/reviews/", response_model=ReviewResponse)
 async def create_review(review: ReviewCreate):
